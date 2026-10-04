@@ -30,7 +30,7 @@ public final class CommandJailRelease extends KingdomsCommand {
     public CommandResult execute(CommandContext context) {
         context.assertPlayer();
         if (context.assertHasKingdom()) return CommandResult.FAILED;
-        if (!context.requireArgs(1)) return CommandResult.FAILED;
+        context.requireArgs(1); // Throws the usage error when missing.
 
         if (!JailsConfig.RELEASE_BY_MEMBERS.getBoolean()) return context.fail(JailsLang.COMMAND_JAIL_RELEASE_DISABLED);
 

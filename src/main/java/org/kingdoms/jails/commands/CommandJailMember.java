@@ -32,7 +32,7 @@ public final class CommandJailMember extends KingdomsCommand {
     public CommandResult execute(CommandContext context) {
         context.assertPlayer();
         if (context.assertHasKingdom()) return CommandResult.FAILED;
-        if (!context.requireArgs(1)) return CommandResult.FAILED;
+        context.requireArgs(1); // Throws the usage error when missing.
 
         Player player = context.senderAsPlayer();
         KingdomPlayer jailer = context.getKingdomPlayer();

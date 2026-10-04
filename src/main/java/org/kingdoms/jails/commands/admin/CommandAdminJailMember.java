@@ -26,7 +26,7 @@ public final class CommandAdminJailMember extends KingdomsCommand {
 
     @Override
     public CommandResult execute(CommandContext context) {
-        if (!context.requireArgs(2)) return CommandResult.FAILED;
+        context.requireArgs(2); // Throws the usage error when missing.
 
         Kingdom kingdom = context.getKingdom(0);
         if (kingdom == null) return CommandResult.FAILED;

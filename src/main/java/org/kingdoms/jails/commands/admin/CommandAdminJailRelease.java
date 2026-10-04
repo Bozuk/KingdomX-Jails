@@ -27,7 +27,7 @@ public final class CommandAdminJailRelease extends KingdomsCommand {
     @Override
     @SuppressWarnings("deprecation")
     public CommandResult execute(CommandContext context) {
-        if (!context.requireArgs(1)) return CommandResult.FAILED;
+        context.requireArgs(1); // Throws the usage error when missing.
 
         OfflinePlayer target = Bukkit.getOfflinePlayer(context.arg(0));
         context.var("player", target.getName() == null ? context.arg(0) : target.getName());

@@ -1,0 +1,366 @@
+# ============================================================================ #
+#                          Kingdoms Addon - Jails                              #
+#                                                                              #
+#  Every kingdom has ONE jail, set with /k jail location. Members holding the   #
+#  JAIL kingdom permission lock players in it with                              #
+#     /k jail member <player> [bail] [duration] [reason]                        #
+#  and failed invaders can be thrown in it automatically (see 'invasions').    #
+#                                                                              #
+#  A prisoner gets out by:                                                      #
+#   - serving the sentence (online or offline),                                 #
+#   - paying the bail: /k jail paybail (money, never resource points),          #
+#   - leaving the kingdom, if they are a member of the jailing kingdom,         #
+#   - escaping to the wilderness: the kingdom has to build a proper jail,       #
+#   - being released by the kingdom (/k jail release) or by an admin.           #
+#                                                                              #
+#  Durations: 30s, 10m, 2h, 1d, 1w, or combined: 1h30m. A bare number is a      #
+#  number of seconds. 0 means "no time limit" where a sentence is concerned.    #
+# ============================================================================ #
+
+jail:
+  # The kingdom permission that manages the jail: setting its location, jailing
+  # and releasing. KingdomsX only gives JAIL to the king by default: add it to
+  # the ranks that should have it, in ranks.yml.
+  # Members holding this permission can never jail each other.
+  permission: JAIL
+
+  location:
+    # The jail has to be set inside the kingdom's own land.
+    require-own-land: true
+    # The jail is removed when the land it stands on is unclaimed.
+    remove-on-unclaim: true
+    # What happens to the prisoners when the jail location is removed:
+    #   KEEP    - they stay jailed, but have no jail to be sent to.
+    #   RELEASE - they are all released.
+    on-remove: KEEP
+
+  # Maximum number of prisoners per kingdom. 0 = no limit.
+  max-prisoners: 0
+
+  # Prisoners who die respawn in the jail.
+  respawn-in-jail: true
+
+  # A player jailed while offline is sent to the jail on their next login.
+  teleport-on-join: true
+
+  # Bukkit permission: players holding it can never be jailed. Empty to disable.
+  exempt-permission: 'kingdoms.jails.exempt'
+
+  # Bukkit permission: prisoners holding it ignore every restriction below.
+  # Empty to disable.
+  bypass-permission: 'kingdoms.jails.bypass'
+
+  # Worlds where no jail can be set and nobody can be jailed.
+  disabled-worlds: [ ]
+
+# ============================================================================ #
+#                       JAILING - /k jail member                               #
+# ============================================================================ #
+jailing:
+  # The kingdom must have a jail location to jail anyone.
+  require-location: true
+
+  # The prisoner is teleported to the jail. Their inventory is never touched.
+  teleport-to-jail: true
+
+  # How long before the same player can be jailed again, counted from the moment
+  # they were jailed.
+  cooldown: 10m
+  # true: the cooldown only stops the kingdom that jailed them.
+  # false: no kingdom can jail them again before the cooldown is over.
+  cooldown-per-kingdom: false
+
+  duration:
+    # The sentence when the jailer doesn't give one. 0 = until released.
+    default: 30m
+    # Members can choose the length of the sentence: /k jail member <player> 0 2h
+    allow-custom: true
+    min: 1m
+    # 0 = no maximum.
+    max: 7d
+    # Members can give a sentence with no time limit ('permanent' as the duration).
+    allow-permanent: false
+
+  bail:
+    # Members can set a bail. A sentence without a bail can't be bought off.
+    enabled: true
+    # The bail when the jailer doesn't give one. 0 = no bail.
+    default: 0
+    min: 0
+    # 0 = no maximum.
+    max: 0
+
+  reason:
+    required: false
+    # Used when no reason is given. Empty for none.
+    default: ''
+    max-length: 100
+
+  # Who can be jailed by a kingdom.
+  targets:
+    # The target has to be online. When false, an offline player is jailed and
+    # sent to the jail on their next login.
+    online-only: true
+    # The target has to stand in the kingdom's land.
+    must-be-in-own-land: true
+    # Members of the jailing kingdom can be jailed.
+    members: true
+    # Among members, only those of a lower rank than the jailer.
+    respect-rank-hierarchy: true
+    # Players without a kingdom can be jailed.
+    no-kingdom: true
+    # Members of another kingdom can be jailed, depending on its relation with
+    # the jailing kingdom: NEUTRAL, ENEMY, TRUCE, ALLY, NATION.
+    relations: [ NEUTRAL, ENEMY, TRUCE ]
+
+# ============================================================================ #
+#                               NOTIFICATIONS                                  #
+# ============================================================================ #
+notifications:
+  # The jailing kingdom's online members are told about every jailing, release
+  # and escape.
+  jailer-kingdom: true
+  # The prisoner's own kingdom is told when one of its members is jailed.
+  prisoner-kingdom: true
+  # Every online player is told about every jailing.
+  broadcast: false
+  # How often an online prisoner is reminded of their sentence. 0 to disable.
+  reminder-interval: 5m
+
+# ============================================================================ #
+#                                  RELEASE                                     #
+# ============================================================================ #
+release:
+  time:
+    # Prisoners are released once their sentence is served.
+    enabled: true
+    # true: the sentence runs while the prisoner is offline too.
+    # false: only the time spent online counts.
+    count-offline-time: true
+
+  bail:
+    # Prisoners can pay their bail: /k jail paybail. Requires Vault.
+    enabled: true
+    # Where the money goes: KINGDOM_BANK (the jailing kingdom's bank) or NONE.
+    receiver: KINGDOM_BANK
+    # Anyone can pay someone else's bail: /k jail paybail <player>
+    allow-paying-for-others: true
+
+  leave-kingdom:
+    # A member of the jailing kingdom who leaves it is released.
+    enabled: true
+    # Which ways of leaving count: LEFT, KICKED, ADMIN, INACTIVITY, TAX, CUSTOM.
+    reasons: [ LEFT, KICKED, ADMIN, INACTIVITY, TAX, CUSTOM ]
+
+  escape:
+    # A prisoner who reaches the wilderness is free.
+    enabled: true
+    # WILDERNESS:      unclaimed land only.
+    # OUTSIDE_KINGDOM: any land the jailing kingdom doesn't own.
+    mode: WILDERNESS
+    # When escaping is disabled, what happens to a prisoner trying to reach
+    # such a land: TELEPORT_BACK (the move is cancelled) or NOTHING.
+    when-disabled: TELEPORT_BACK
+
+  # Members holding the jail permission can release a prisoner early:
+  # /k jail release <player>
+  by-members: true
+
+  teleport:
+    # Where a released prisoner is sent: the first available destination wins.
+    #   OWN_KINGDOM_HOME     the home of the prisoner's own kingdom
+    #   JAILER_KINGDOM_HOME  the home of the kingdom that jailed them
+    #   PREVIOUS_LOCATION    where they stood when they were jailed
+    #   BED_SPAWN            their bed or respawn anchor
+    #   WORLD_SPAWN          the spawn of the world they are in
+    #   MAIN_WORLD_SPAWN     the spawn of the main world
+    #   NONE                 stop here: they stay where they are
+    destinations: [ OWN_KINGDOM_HOME, NONE ]
+    # Which releases teleport. ESCAPED is left out on purpose: the prisoner
+    # earned their freedom where they stand.
+    #   TIME_SERVED, BAIL_PAID, RELEASED, ADMIN, LEFT_KINGDOM, ESCAPED,
+    #   KINGDOM_DISBANDED, JAIL_REMOVED, PLUGIN
+    reasons: [ TIME_SERVED, BAIL_PAID, RELEASED, ADMIN, LEFT_KINGDOM, KINGDOM_DISBANDED, JAIL_REMOVED, PLUGIN ]
+
+# ============================================================================ #
+#                                 INVASIONS                                    #
+# ============================================================================ #
+invasions:
+  auto-jail:
+    # The invader of a failed invasion is thrown in the defender's jail.
+    enabled: false
+    # Which invasion results count as a failure. A successful invasion never
+    # jails anyone, whatever is written here.
+    #   ATTACKER_SURRENDERED, DIED, TIMES_UP, ATTACKER_DEATH_LIMIT, LOGOUT,
+    #   DEFENDER_DEATH_LIMIT, UNCLAIMED, ATTACKER_NO_LONGER_IN_KINGDOM
+    results: [ ATTACKER_SURRENDERED, DIED, TIMES_UP, ATTACKER_DEATH_LIMIT, LOGOUT ]
+    # The bail, set by the server and not by the players. A number or a math
+    # expression with the invader's placeholders, e.g. '500 * %kingdoms_kingdom_level%'.
+    # 0 = no bail.
+    bail: '1000'
+    # Where that bail goes: KINGDOM_BANK (the defender's bank) or NONE.
+    bail-receiver: NONE
+    # 0 = until released.
+    duration: 1h
+    # Empty for none.
+    reason: 'Failed invasion'
+    # KingdomsX sends the invader back when the invasion ends: the jailing waits
+    # for it to be done.
+    delay: 2s
+    # Without a jail location, nobody is jailed.
+    require-jail-location: true
+    ignore-cooldown: true
+    ignore-max-prisoners: true
+    # Also jail the attacking kingdom's online members standing in the
+    # defender's land.
+    attackers-in-invaded-land: false
+
+# ============================================================================ #
+#                               RESTRICTIONS                                   #
+#                                                                              #
+#  What a prisoner can't do. 'jail.bypass-permission' lifts all of them.        #
+# ============================================================================ #
+restrictions:
+  teleport:
+    # Prisoners can't teleport, nor be teleported, by these causes. The teleports
+    # of this addon (to and out of the jail) always go through.
+    # Causes: COMMAND, PLUGIN, ENDER_PEARL, CHORUS_FRUIT, CONSUMABLE_EFFECT,
+    # NETHER_PORTAL, END_PORTAL, END_GATEWAY, SPECTATE, DISMOUNT, EXIT_BED, UNKNOWN
+    enabled: true
+    blocked-causes: [ COMMAND, PLUGIN, ENDER_PEARL, CHORUS_FRUIT, CONSUMABLE_EFFECT, NETHER_PORTAL, END_PORTAL, END_GATEWAY, SPECTATE ]
+
+  items:
+    enabled: true
+    # ALL:  every item is blocked, except the 'allowed' ones.
+    # LIST: only the 'blocked' items are.
+    # Patterns: an exact material, or *_SUFFIX, PREFIX_*, *CONTAINS*.
+    mode: ALL
+    allowed: [ BREAD, APPLE, CARROT, BAKED_POTATO, COOKED_BEEF, COOKED_PORKCHOP, COOKED_CHICKEN, COOKED_MUTTON, COOKED_COD, COOKED_SALMON ]
+    blocked: [ ENDER_PEARL, CHORUS_FRUIT ]
+    # Eating and drinking count as using an item.
+    consume: true
+    # Prisoners can't drop items.
+    drop: false
+    # Prisoners can't pick items up.
+    pickup: false
+
+  pvp:
+    # Prisoners can attack other players.
+    prisoners-can-attack: false
+    # Prisoners who are members of the jailing kingdom can't be hit.
+    member-prisoners-protected: true
+    # Prisoners who are not members of the jailing kingdom can be hit...
+    foreign-prisoners-attackable: true
+    # ...by ANYONE, or only by the JAILER_KINGDOM.
+    foreign-prisoners-attackers: ANYONE
+    # Those hits go through even if KingdomsX (relations, PvP toggles) or
+    # another plugin blocks them.
+    force-allow: false
+
+  blocks:
+    break: true
+    place: true
+    # Right-clicking blocks (doors, chests, buttons...).
+    interact: true
+    # Pressure plates and tripwires.
+    physical: false
+    # Blocks prisoners can still use, same patterns as the items.
+    interact-whitelist: [ ]
+
+  entities:
+    # Right-clicking entities: villagers, item frames, armor stands...
+    interact: true
+    # Hitting mobs and animals. Players are handled by 'pvp'.
+    damage: false
+
+  chat:
+    enabled: true
+    # The KingdomsX chat channels prisoners can't talk in. GLOBAL is the public
+    # chat; the others are channel ids: KINGDOM, ALLY, NATION...
+    blocked-channels: [ GLOBAL ]
+
+  commands:
+    enabled: true
+    # BLACKLIST: the 'list' commands are blocked.
+    # WHITELIST: only the 'list' commands are allowed.
+    mode: BLACKLIST
+    # A command matches its sub-commands: 'k home' blocks '/k home' and
+    # '/k home bed', 'tpa' blocks '/tpa Steve'. Plugin prefixes are ignored:
+    # 'home' also blocks '/essentials:home'.
+    list:
+      - spawn
+      - home
+      - homes
+      - warp
+      - warps
+      - back
+      - tpa
+      - tpahere
+      - tpaccept
+      - tpyes
+      - tpask
+      - call
+      - rtp
+      - wild
+      - wilderness
+      - k home
+      - kingdom home
+      - kingdoms home
+      - k tp
+      - k invade
+      - kingdom invade
+      - kingdoms invade
+      - k challenge
+      - k outpost
+    # Never blocked, whatever the mode.
+    always-allowed:
+      - k jail
+      - kingdom jail
+      - kingdoms jail
+      - k jails
+      - k prison
+      - k leave
+      - kingdom leave
+      - kingdoms leave
+
+  # Minimum time between two identical restriction messages.
+  message-cooldown: 2s
+
+# ============================================================================ #
+#                                   STATUS                                     #
+# ============================================================================ #
+status:
+  # /k jail status <player> shows someone else's status.
+  others:
+    enabled: true
+    # Bukkit permission required for that. Empty: anyone.
+    permission: ''
+
+list:
+  # /k jail list requires the jail permission. Otherwise every member can see
+  # the prisoners of their kingdom.
+  require-permission: false
+
+timer:
+  # How often sentences are checked. 1s is cheap: only prisoners are looked at.
+  interval: 1s
+
+# ============================================================================ #
+#                                   MESSAGES                                   #
+#                                                                              #
+#  The addon's messages live in one file per language:                          #
+#     plugins/Kingdoms/jails/languages/<code>.yml                               #
+#  Same layout as the KingdomsX language files. A missing key falls back to     #
+#  the English text built into the addon.                                       #
+#                                                                              #
+#  A file is created for every language installed on the server. French         #
+#  (fr.yml) ships translated, the others are generated from the English texts,  #
+#  ready to be translated.                                                      #
+#                                                                              #
+#  KingdomsX has no French locale, so a French server runs in English: point    #
+#  EN at fr.yml to get French messages. Uncomment to do so:                     #
+#                                                                              #
+#     messages:                                                                 #
+#       language-files:                                                         #
+#         EN: fr                                                                #
+# ============================================================================ #

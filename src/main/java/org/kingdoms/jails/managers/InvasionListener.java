@@ -14,7 +14,6 @@ import org.kingdoms.jails.JailsAddon;
 import org.kingdoms.jails.config.JailsConfig;
 import org.kingdoms.jails.data.JailType;
 import org.kingdoms.jails.data.KingdomJails;
-import org.kingdoms.jails.util.Durations;
 import org.kingdoms.jails.util.Scheduling;
 import org.kingdoms.managers.invasions.Invasion;
 import org.kingdoms.utils.MathUtils;
@@ -84,7 +83,7 @@ public final class InvasionListener implements Listener {
         OfflinePlayer player = Bukkit.getOfflinePlayer(target);
         if (JailPermissions.isExempt(player.getPlayer())) return;
 
-        long duration = Durations.parseOr(JailsConfig.INVASIONS_AUTO_JAIL_DURATION.getString(), 0);
+        long duration = JailsConfig.INVASIONS_AUTO_JAIL_DURATION.getMillis();
         String reason = JailsConfig.INVASIONS_AUTO_JAIL_REASON.getString();
         JailService.jail(defender, player, null, JailType.INVASION, Math.max(0, duration), bail(player),
                 reason.isEmpty() ? null : reason);

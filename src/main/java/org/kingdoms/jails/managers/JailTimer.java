@@ -7,7 +7,6 @@ import org.kingdoms.jails.config.JailsLang;
 import org.kingdoms.jails.data.JailSession;
 import org.kingdoms.jails.data.KingdomJails;
 import org.kingdoms.jails.data.ReleaseReason;
-import org.kingdoms.jails.util.Durations;
 import org.kingdoms.jails.util.Scheduling;
 import org.kingdoms.scheduler.DelayedRepeatingTask;
 
@@ -32,7 +31,7 @@ public final class JailTimer {
 
     public static synchronized void start() {
         stop();
-        long interval = Math.max(1000L, Durations.parseOr(JailsConfig.TIMER_INTERVAL.getString(), 1000L));
+        long interval = Math.max(1000L, JailsConfig.TIMER_INTERVAL.getMillis());
         task = Scheduling.repeatGlobal(Duration.ofSeconds(1), Duration.ofMillis(interval), JailTimer::tick);
     }
 

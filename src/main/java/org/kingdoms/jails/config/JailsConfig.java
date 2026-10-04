@@ -206,6 +206,15 @@ public enum JailsConfig implements EnumConfig {
 
     /** A duration such as {@code 10m}, in milliseconds. Anything invalid counts as {@code 0}. */
     public long getMillis() {
-        return Math.max(0, Durations.parseOr(getString(), 0));
+        String text = getString().trim();
+        if (text.isEmpty()) {
+            // A bare YAML number (cooldown: 600) may not come back as text: read it as seconds.
+            try {
+                return Math.max(0, getManager().getLong() * 1000L);
+            } catch (RuntimeException ex) {
+                return 0;
+            }
+        }
+        return Math.max(0, Durations.parseOr(text, 0));
     }
 }

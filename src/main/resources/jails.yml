@@ -276,7 +276,9 @@ restrictions:
   chat:
     enabled: true
     # The KingdomsX chat channels prisoners can't talk in. GLOBAL is the public
-    # chat; the others are channel ids: KINGDOM, ALLY, NATION...
+    # chat; the others are the channel ids of KingdomsX's chat.yml: KINGDOM,
+    # NATION, TRUCE, ALLY, STAFF, HELP, RANGED... A ranged message sent with the
+    # range bypass prefix ('!') reaches everyone, so it counts as GLOBAL.
     blocked-channels: [ GLOBAL ]
 
   commands:

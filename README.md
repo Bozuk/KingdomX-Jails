@@ -191,8 +191,10 @@ default).
 - **Teleport restriction** — the addon's own teleports (to and out of the jail) are let through,
   everything else is checked against the blocked causes. `PlayerPortalEvent` has its own handler
   list and is listened to separately.
-- **Chat** — the channel is the player's KingdomsX channel, unless the message starts with the
-  bypass prefix of another channel. If the chat API moved, the message is treated as global.
+- **Chat** — the channel is the player's KingdomsX channel. A message of the `ranged` channel
+  starting with its range bypass prefix (`!`) reaches everyone, so it counts as global: blocking
+  `GLOBAL` still lets prisoners talk to whoever stands near them, nothing more. If the chat API
+  moved, every message is treated as global.
 - **Folia** — tasks go through the KingdomsX scheduler (global region / entity schedulers), and
   teleports use Paper's `teleportAsync` when it exists, looked up by reflection since the addon
   compiles against the Spigot API.

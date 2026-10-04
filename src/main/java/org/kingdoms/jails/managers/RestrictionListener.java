@@ -338,8 +338,8 @@ public final class RestrictionListener implements Listener {
     // --------------------------------------------------------------------- chat
 
     /**
-     * The KingdomsX chat channel the message goes to: the player's channel, unless the message
-     * starts with the bypass prefix of another channel.
+     * Prisoners can't talk in the KingdomsX channels of {@code restrictions.chat.blocked-channels}.
+     * {@code GLOBAL} stands for the public chat.
      */
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onChat(AsyncPlayerChatEvent event) {
@@ -353,20 +353,23 @@ public final class RestrictionListener implements Listener {
         }
     }
 
+    /**
+     * The channel is the player's KingdomsX channel. A message starting with that channel's
+     * bypass prefix ({@code ranged-bypass-prefix}, {@code !} by default) escapes the range of the
+     * ranged channel and reaches everyone: it counts as a global message.
+     */
     private static boolean isBlockedChannel(Player player, String message) {
         List<String> blocked = JailsConfig.RESTRICTIONS_CHAT_BLOCKED_CHANNELS.getUpperCaseList();
         if (blocked.isEmpty()) return false;
 
-        KingdomsChatChannel channel = null;
+        KingdomsChatChannel channel;
         try {
             KingdomPlayer kingdomPlayer = KingdomPlayer.getKingdomPlayer(player);
-            if (kingdomPlayer != null) channel = kingdomPlayer.getChatChannel();
-
-            for (KingdomsChatChannel candidate : KingdomsChatChannel.getChannels().values()) {
-                String prefix = candidate.getBypassPrefix();
+            channel = kingdomPlayer == null ? null : kingdomPlayer.getChatChannel();
+            if (channel != null && !channel.isGlobal()) {
+                String prefix = channel.getBypassPrefix();
                 if (prefix != null && !prefix.isEmpty() && message.startsWith(prefix)) {
-                    channel = candidate;
-                    break;
+                    return blocked.contains("GLOBAL") || blocked.contains(idOf(channel));
                 }
             }
         } catch (RuntimeException | LinkageError ex) {
@@ -375,8 +378,11 @@ public final class RestrictionListener implements Listener {
         }
 
         if (channel == null || channel.isGlobal()) return blocked.contains("GLOBAL");
-        String id = channel.getId() == null ? "" : channel.getId().toUpperCase(Locale.ENGLISH);
-        return blocked.contains(id);
+        return blocked.contains(idOf(channel));
+    }
+
+    private static String idOf(KingdomsChatChannel channel) {
+        return channel.getId() == null ? "" : channel.getId().toUpperCase(Locale.ENGLISH);
     }
 
     // ----------------------------------------------------------------- commands

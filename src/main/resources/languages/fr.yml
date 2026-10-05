@@ -1,0 +1,192 @@
+# ============================================================================ #
+#               Kingdoms Addon - Jails : messages en francais                  #
+#                                                                              #
+#  Ce fichier suit exactement la meme structure que les fichiers de langue de   #
+#  KingdomsX : les memes arbres 'command:' et 'jails:', les memes cles.         #
+#  Une cle absente retombe sur le texte anglais integre a l'extension.          #
+#                                                                              #
+#  NOTE IMPORTANTE : KingdomsX ne propose pas de locale francaise (les langues  #
+#  disponibles sont en, de, es, it, pt, pl, ru, cs, hu, tr, uk, vi, zh). Ce     #
+#  fichier n'est donc jamais charge automatiquement : un serveur francais       #
+#  tourne en anglais. Pour lui donner ces messages, pointez la langue EN vers   #
+#  ce fichier dans jails.yml :                                                  #
+#                                                                              #
+#      messages:                                                                #
+#        language-files:                                                        #
+#          EN: fr                                                               #
+# ============================================================================ #
+
+command:
+  jail:
+    name: prison
+    aliases: 'jail jails'
+    description: '{$s}Gere la prison de votre royaume.'
+
+    location:
+      description: "{$s}Place la prison de votre royaume la ou vous vous trouvez."
+      usage: '{$usage}jail location {$p}[remove]'
+      set: '{$p}La prison du royaume est desormais en {$s}%location%{$p}.'
+      announcement: '{$s}%player% {$p}a deplace la prison du royaume en {$s}%location%{$p}.'
+      not-own-land: '{$e}La prison doit se trouver sur les terres de votre royaume.'
+      disabled-world: '{$e}Les prisons sont desactivees dans ce monde.'
+      removed: '{$p}La prison du royaume a ete supprimee.'
+      not-set: "{$e}Votre royaume n'a pas de prison. hover:{{$es}/k jail location;{$p}Cliquez pour la placer ici;/k jail location}"
+
+    member:
+      description: '{$s}Met un joueur dans la prison de votre royaume.'
+      usage: '{$usage}jail member {$p}<joueur> [caution] [duree] [raison]'
+      not-found: "{$es}%player% {$e}n'a jamais joue sur ce serveur."
+      self: '{$e}Vous ne pouvez pas vous emprisonner vous-meme.'
+      already-jailed: '{$es}%player% {$e}est deja dans la prison de {$es}%kingdom%{$e}.'
+      exempt: '{$es}%player% {$e}ne peut pas etre emprisonne.'
+      offline: '{$es}%player% {$e}doit etre en ligne pour etre emprisonne.'
+      not-in-land: '{$es}%player% {$e}doit se trouver sur les terres de votre royaume pour etre emprisonne.'
+      members-disabled: '{$e}Vous ne pouvez pas emprisonner les membres de votre propre royaume.'
+      same-permission: '{$es}%player% {$e}peut lui aussi gerer la prison, vous ne pouvez pas l''emprisonner.'
+      higher-rank: "{$es}%player% {$e}n'a pas un rang inferieur au votre, vous ne pouvez pas l'emprisonner."
+      no-kingdom-disabled: "{$e}Vous ne pouvez pas emprisonner les joueurs qui n'appartiennent a aucun royaume."
+      relation-disabled: '{$e}Vous ne pouvez pas emprisonner les membres de {$es}%target_kingdom% {$e}({$es}%relation%{$e}).'
+      cooldown: '{$es}%player% {$e}a ete emprisonne recemment. Reessayez dans {$es}%time%{$e}.'
+      max-prisoners: '{$e}Votre prison est pleine : {$es}%max% {$e}prisonniers au maximum.'
+      disabled-world: '{$e}Les prisons sont desactivees dans ce monde.'
+      invalid-bail: "{$es}%bail% {$e}n'est pas une caution valide. Elle doit etre comprise entre {$es}%min% {$e}et {$es}%max%{$e}."
+      bail-disabled: '{$e}Les cautions sont desactivees.'
+      invalid-duration: '{$e}La peine doit durer entre {$es}%min% {$e}et {$es}%max%{$e}.'
+      custom-duration-disabled: '{$e}Vous ne pouvez pas choisir la duree de la peine.'
+      reason-required: '{$e}Vous devez donner une raison.'
+      reason-too-long: '{$e}La raison ne peut pas depasser {$es}%max% {$e}caracteres.'
+      cancelled: "{$e}L'emprisonnement a ete annule."
+      jailed: '{$p}Vous avez emprisonne {$s}%player%{$p}. Peine{$colon} {$s}%duration%{$p}, caution{$colon} {$s}%bail%'
+
+    status:
+      description: '{$s}Affiche le temps de peine restant.'
+      usage: '{$usage}jail status {$p}[joueur]'
+      not-jailed: "{$p}Vous n'etes pas en prison."
+      not-jailed-other: "{$s}%player% {$p}n'est pas en prison."
+      others-disabled: '{$e}Vous ne pouvez consulter que votre propre situation.'
+      display: |-
+        {$sep}-=[ {$p}Situation de {$s}%player% {$sep}]=-
+        {$p}Prison{$colon} {$s}%kingdom%
+        {$p}Emprisonne par{$colon} {$s}%jailer% {$sep}({$s}%type%{$sep})
+        {$p}Raison{$colon} {$s}%reason%
+        {$p}Purge{$colon} {$s}%served%
+        {$p}Peine{$colon} {$s}%duration%
+        {$p}Restant{$colon} {$s}%remaining%
+        {$p}Caution{$colon} {$s}%bail%
+
+    paybail:
+      description: '{$s}Paie une caution pour sortir de prison.'
+      usage: '{$usage}jail paybail {$p}[joueur]'
+      disabled: '{$e}Les cautions ne peuvent pas etre payees sur ce serveur.'
+      not-jailed: "{$e}Vous n'etes pas en prison."
+      not-jailed-other: "{$es}%player% {$e}n'est pas en prison."
+      others-disabled: '{$e}Vous ne pouvez payer que votre propre caution.'
+      no-bail: "{$e}Cette peine n'a pas de caution : elle doit etre purgee."
+      no-economy: "{$e}Aucun plugin d'economie n'a ete trouve, les cautions ne peuvent pas etre payees."
+      not-enough-money: "{$e}La caution est de {$es}%bail%{$e}, vous n'avez que {$es}%balance%{$e}."
+      paid-other: '{$p}Vous avez paye la caution de {$s}%player%{$p}{$colon} {$s}%bail%'
+      cancelled: '{$e}La liberation a ete annulee, votre argent vous a ete rendu.'
+
+    release:
+      description: '{$s}Libere un prisonnier de la prison de votre royaume.'
+      usage: '{$usage}jail release {$p}<joueur>'
+      disabled: '{$e}Les prisonniers ne peuvent pas etre liberes avant la fin de leur peine sur ce serveur.'
+      not-jailed-here: "{$es}%player% {$e}n'est pas detenu dans la prison de votre royaume."
+      released: '{$p}Vous avez libere {$s}%player%{$p}.'
+      cancelled: '{$e}La liberation a ete annulee.'
+
+    list:
+      description: '{$s}Liste les prisonniers de votre royaume.'
+      empty: '{$p}La prison de votre royaume est vide.'
+      header: |-
+        {$sep}-=[ {$p}Prisonniers {$sep}({$s}%count%{$sep}) ]=-
+        {$p}Prison{$colon} {$s}%location%
+      entry: "{$sep}- hover:{{$s}%player%;{$p}Emprisonne par {$s}%jailer%\n{$p}Raison{$colon} {$s}%reason%;/k jail status %player%} {$sep}| {$p}%remaining% {$sep}| {$p}caution {$s}%bail%"
+
+  admin:
+    jail:
+      description: '{$s}Gere les prisons de tous les royaumes.'
+      member:
+        description: "{$s}Met un joueur dans la prison d'un royaume, sans aucune condition."
+        usage: '{$usage}admin jail member {$p}<royaume> <joueur> [caution] [duree] [raison]'
+        jailed: '{$s}%player% {$p}est desormais dans la prison de {$s}%kingdom%{$p}.'
+      release:
+        description: '{$s}Libere un joueur, quel que soit le royaume.'
+        usage: '{$usage}admin jail release {$p}<joueur>'
+        released: '{$s}%player% {$p}a ete libere de la prison de {$s}%kingdom%{$p}.'
+      resetcooldown:
+        description: "{$s}Efface le delai avant qu'un joueur puisse etre emprisonne a nouveau."
+        usage: '{$usage}admin jail resetcooldown {$p}<joueur>'
+        done: '{$p}Le delai de {$s}%player% {$p}a ete efface.'
+
+jails:
+  general:
+    no-permission: "{$e}Vous n'avez pas la permission de royaume pour gerer la prison."
+    not-jailed: "{$es}%player% {$e}n'est pas en prison."
+
+  notifications:
+    jailed:
+      prisoner: |-
+        {$e}Vous avez ete emprisonne par {$es}%kingdom%{$e}.
+        {$e}Raison{$colon} {$es}%reason%
+        {$e}Peine{$colon} {$es}%duration%{$e}, caution{$colon} {$es}%bail%
+        hover:{{$es}/k jail status;{$p}Cliquez pour voir votre situation;/k jail status}
+      jailer-kingdom: '{$s}%jailer% {$p}a emprisonne {$s}%player%{$p}. Raison{$colon} {$s}%reason%'
+      prisoner-kingdom: '{$e}Votre compagnon {$es}%player% {$e}a ete emprisonne par {$es}%kingdom%{$e}.'
+      broadcast: '{$s}%player% {$p}a ete jete dans la prison de {$s}%kingdom%{$p}.'
+    reminder: '{$e}Vous etes dans la prison de {$es}%kingdom%{$e}. Restant{$colon} {$es}%remaining%{$e}, caution{$colon} {$es}%bail%'
+    released:
+      prisoner: '{$p}Vous etes sorti de la prison de {$s}%kingdom%{$colon} {$s}%release_reason%{$p}.'
+      kingdom: '{$s}%player% {$p}est sorti de prison{$colon} {$s}%release_reason%{$p}.'
+    escaped:
+      kingdom: "{$es}%player% {$e}s'est evade de la prison !"
+    escape:
+      blocked: '{$e}Vous ne pouvez pas quitter la prison.'
+
+  release:
+    reasons:
+      time-served: 'peine purgee'
+      bail-paid: 'caution payee'
+      released: 'libere par le royaume'
+      admin: 'libere par un administrateur'
+      left-kingdom: 'a quitte le royaume'
+      escaped: 'evade'
+      kingdom-disbanded: 'le royaume a ete dissous'
+      jail-removed: 'la prison a ete supprimee'
+      plugin: 'libere'
+
+  types:
+    manual: 'emprisonne par un membre'
+    invasion: 'invasion ratee'
+    admin: 'emprisonne par un administrateur'
+
+  values:
+    no-bail: 'aucune'
+    bail: '%amount% $'
+    permanent: "jusqu'a liberation"
+    server: 'le serveur'
+    no-reason: '-'
+    no-location: 'non definie'
+
+  time:
+    days: '%amount%j'
+    hours: '%amount%h'
+    minutes: '%amount%min'
+    seconds: '%amount%s'
+    separator: ' '
+    zero: '0s'
+
+  restrictions:
+    teleport: '{$e}Vous ne pouvez pas vous teleporter en prison.'
+    item: '{$e}Vous ne pouvez pas utiliser cela en prison.'
+    drop: '{$e}Vous ne pouvez pas jeter d''objets en prison.'
+    attack: '{$e}Les prisonniers ne peuvent pas se battre.'
+    protected-prisoner: '{$e}Ce prisonnier est sous la protection de la prison.'
+    block:
+      break: '{$e}Vous ne pouvez pas casser de blocs en prison.'
+      place: '{$e}Vous ne pouvez pas poser de blocs en prison.'
+      interact: '{$e}Vous ne pouvez pas utiliser cela en prison.'
+    entity:
+      interact: '{$e}Vous ne pouvez pas faire cela en prison.'
+    chat: '{$e}Les prisonniers ne peuvent pas parler dans ce canal. hover:{{$es}/k chat kingdom;{$p}Passer au chat du royaume;/k chat kingdom}'
+    command: '{$e}Vous ne pouvez pas utiliser cette commande en prison.'

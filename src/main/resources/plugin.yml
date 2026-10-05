@@ -1,0 +1,8 @@
+main: org.kingdoms.jails.JailsAddon
+name: Jails
+description: "${project.description}"
+version: "${project.version}"
+author: KingdomX-Jails
+api-version: "1.16"
+folia-supported: true
+depend: [ Kingdoms ]

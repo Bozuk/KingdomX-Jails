@@ -9,10 +9,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      # KingdomsX is not on a public repository beyond 1.17.18.1-BETA (Maven Central), so that is
-      # the version CI builds against. Set the KINGDOMS_VERSION repository variable to change it.
-      KINGDOMS_VERSION: ${{ vars.KINGDOMS_VERSION || '1.17.18.1-BETA' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -22,12 +18,45 @@ jobs:
           java-version: '21'
           cache: maven
 
+      # KingdomsX stops at 1.17.18.1-BETA on Maven Central: the current releases are published on
+      # Modrinth. The latest one is downloaded and installed in the local Maven repository, so the
+      # addon is always compiled against what servers actually run. The KINGDOMS_VERSION repository
+      # variable pins an exact Modrinth version number instead of 'latest'.
+      - name: Fetch KingdomsX from Modrinth
+        id: kingdoms
+        env:
+          WANTED: ${{ vars.KINGDOMS_VERSION || 'latest' }}
+          USER_AGENT: ${{ github.repository }} CI (https://github.com/${{ github.repository }})
+        run: |
+          set -euo pipefail
+          curl -fsSL -A "$USER_AGENT" https://api.modrinth.com/v2/project/kingdomsx/version -o "$RUNNER_TEMP/versions.json"
+
+          if [ "$WANTED" = latest ]; then
+            VERSION=$(jq -r 'sort_by(.date_published) | last | .version_number' "$RUNNER_TEMP/versions.json")
+          else
+            VERSION="$WANTED"
+          fi
+
+          URL=$(jq -r --arg v "$VERSION" '[.[] | select(.version_number == $v)] | sort_by(.date_published) | last
+            | .files // [] | (map(select(.primary)) + .) | .[0].url // empty' "$RUNNER_TEMP/versions.json")
+          if [ -z "$URL" ]; then
+            echo "::error::KingdomsX $VERSION was not found on Modrinth"
+            exit 1
+          fi
+
+          curl -fsSL -A "$USER_AGENT" "$URL" -o "$RUNNER_TEMP/kingdoms.jar"
+          mvn -B -q install:install-file -Dfile="$RUNNER_TEMP/kingdoms.jar" \
+            -DgroupId=com.github.cryptomorin -DartifactId=kingdoms -Dversion="$VERSION" -Dpackaging=jar
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Built against KingdomsX **$VERSION** ($URL)" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Build and test
-        run: mvn -B clean package -Dkingdoms.version="$KINGDOMS_VERSION"
+        run: mvn -B clean package -Dkingdoms.version="${{ steps.kingdoms.outputs.version }}"
 
       - name: Upload the addon jar
         uses: actions/upload-artifact@v4
         with:
-          name: Kingdoms-Addon-Jails
+          name: Kingdoms-Addon-Jails-for-KingdomsX-${{ steps.kingdoms.outputs.version }}
           path: target/Kingdoms-Addon-Jails-*.jar
           if-no-files-found: error

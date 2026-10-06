@@ -28,9 +28,9 @@ Jailing never touches the prisoner's inventory.
 
 1. Build: `mvn package` → `target/Kingdoms-Addon-Jails-1.0.0.jar`, or download it: every push to
    `main` and every pull request is built by GitHub Actions (*Actions* tab → *Build* → the run →
-   *Artifacts* → `Kingdoms-Addon-Jails`). CI builds against KingdomsX **1.17.18.1-BETA**, the
-   latest on Maven Central; the `KINGDOMS_VERSION` repository variable changes it, provided that
-   version can be downloaded. For a build against your server's exact version, build locally.
+   *Artifacts*). CI downloads the **latest KingdomsX release from Modrinth** and compiles against
+   it — the artifact name and the run summary say which version. The `KINGDOMS_VERSION`
+   repository variable pins an exact Modrinth version instead.
 2. Drop the jar into the server's `plugins/` folder, next to KingdomsX.
 3. Restart. The addon installs:
    - `plugins/Kingdoms/jails.yml` — the configuration;

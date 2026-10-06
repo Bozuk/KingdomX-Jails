@@ -31,8 +31,15 @@ jobs:
           set -euo pipefail
           curl -fsSL -A "$USER_AGENT" https://api.modrinth.com/v2/project/kingdomsx/version -o "$RUNNER_TEMP/versions.json"
 
+          # Highest version number first: the publication date is not reliable, a fix for an older
+          # version can be published after a newer one.
+          SORTED='map(select(.version_number | test("^[0-9]")))
+            | sort_by([(.version_number | capture("^(?<n>[0-9]+(\\.[0-9]+)*)").n | split(".") | map(tonumber)), .date_published])'
+          echo "Newest KingdomsX versions on Modrinth: $(jq -r "$SORTED | reverse | .[:10] | map(.version_number) | join(\", \")" "$RUNNER_TEMP/versions.json")" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
           if [ "$WANTED" = latest ]; then
-            VERSION=$(jq -r 'sort_by(.date_published) | last | .version_number' "$RUNNER_TEMP/versions.json")
+            VERSION=$(jq -r "$SORTED | last | .version_number" "$RUNNER_TEMP/versions.json")
           else
             VERSION="$WANTED"
           fi
@@ -49,6 +56,7 @@ jobs:
             -DgroupId=com.github.cryptomorin -DartifactId=kingdoms -Dversion="$VERSION" -Dpackaging=jar
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Built against KingdomsX **$VERSION** ($URL)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build and test

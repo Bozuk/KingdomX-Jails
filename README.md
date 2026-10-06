@@ -26,7 +26,10 @@ Jailing never touches the prisoner's inventory.
 
 ## Installation
 
-1. Build: `mvn package` → `target/Kingdoms-Addon-Jails-1.0.0.jar`
+1. Build: `mvn package` → `target/Kingdoms-Addon-Jails-1.0.0.jar`, or download it: every push to
+   `main` and every pull request is built by GitHub Actions (*Actions* tab → *Build* → the run →
+   *Artifacts*). The artifact name and the run summary say which KingdomsX version it was compiled
+   against — see *Continuous integration* below.
 2. Drop the jar into the server's `plugins/` folder, next to KingdomsX.
 3. Restart. The addon installs:
    - `plugins/Kingdoms/jails.yml` — the configuration;
@@ -47,6 +50,25 @@ mvn install:install-file -Dfile=<server>/plugins/KingdomsX-1.17.27.3.jar -Dgroup
 
 Without it, the build also works against the version published on Maven Central:
 `mvn package -Dkingdoms.version=1.17.18.1-BETA`.
+
+## Continuous integration
+
+CI compiles against the **highest KingdomsX version** it can download, from two places:
+
+- **the releases of this repository tagged `kingdomsx-<version>`**, with the KingdomsX jar
+  attached — this is how CI gets versions published nowhere public;
+- **Modrinth**, which lags behind SpigotMC (1.17.26-bugfix at the time of writing).
+
+To build against a new KingdomsX version, download its jar from SpigotMC and publish it as a
+release of this repository — no code change needed:
+
+```bash
+gh release create kingdomsx-1.17.27.3 KingdomsX-1.17.27.3.jar --title "KingdomsX 1.17.27.3" --notes "Build dependency for CI"
+```
+
+or *Releases* → *Draft a new release*, tag `kingdomsx-1.17.27.3`, attach the jar, publish (a draft
+is ignored). Then re-run the workflow (*Actions* → *Build* → *Run workflow*). The
+`KINGDOMS_VERSION` repository variable pins an exact version instead of the highest one.
 
 ## Commands
 

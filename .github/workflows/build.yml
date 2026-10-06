@@ -1,0 +1,101 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # The current KingdomsX releases are on neither Maven Central (it stops at 1.17.18.1-BETA) nor
+      # always on Modrinth (it lags behind SpigotMC). The jar is looked up in two places:
+      #   - the releases of this repository tagged kingdomsx-<version>, with the jar as an asset;
+      #   - the versions published on Modrinth.
+      # The highest version number wins, a release of this repository on a tie. The
+      # KINGDOMS_VERSION repository variable pins an exact version instead of 'latest'.
+      - name: Fetch KingdomsX
+        id: kingdoms
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WANTED: ${{ vars.KINGDOMS_VERSION || 'latest' }}
+          USER_AGENT: ${{ github.repository }} CI (https://github.com/${{ github.repository }})
+        run: |
+          set -euo pipefail
+          T="$RUNNER_TEMP"
+
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,isDraft \
+            | jq '[.[] | select((.isDraft | not) and (.tagName | startswith("kingdomsx-")))
+                  | {version: (.tagName | ltrimstr("kingdomsx-")), source: "release", rank: 1, date: "", ref: .tagName}]' \
+            > "$T/releases.json"
+
+          if curl -fsSL -A "$USER_AGENT" https://api.modrinth.com/v2/project/kingdomsx/version -o "$T/modrinth-raw.json"; then
+            jq '[.[] | {version: .version_number, source: "modrinth", rank: 0, date: .date_published,
+                        ref: ((.files // []) | (map(select(.primary)) + .) | .[0].url // "")}
+                 | select(.ref != "")]' "$T/modrinth-raw.json" > "$T/modrinth.json"
+          else
+            echo "::warning::Modrinth could not be reached, only the releases of this repository are used"
+            echo '[]' > "$T/modrinth.json"
+          fi
+
+          # Highest version number first, then this repository's releases, then the newest upload.
+          jq -s 'add | map(select(.version | test("^[0-9]")))
+                 | sort_by([(.version | capture("^(?<n>[0-9]+(\\.[0-9]+)*)").n | split(".") | map(tonumber)), .rank, .date])' \
+            "$T/releases.json" "$T/modrinth.json" > "$T/candidates.json"
+          echo "Newest KingdomsX versions found: $(jq -r 'reverse | .[:10] | map("\(.version) (\(.source))") | join(", ")' "$T/candidates.json")" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+          if [ "$WANTED" = latest ]; then
+            jq 'last' "$T/candidates.json" > "$T/chosen.json"
+          else
+            jq --arg v "$WANTED" 'map(select(.version == $v)) | last' "$T/candidates.json" > "$T/chosen.json"
+          fi
+          VERSION=$(jq -r '.version // empty' "$T/chosen.json")
+          SOURCE=$(jq -r '.source // empty' "$T/chosen.json")
+          REF=$(jq -r '.ref // empty' "$T/chosen.json")
+          if [ -z "$VERSION" ]; then
+            echo "::error::KingdomsX $WANTED was found neither in the releases of this repository nor on Modrinth"
+            exit 1
+          fi
+
+          if [ "$SOURCE" = release ]; then
+            gh release download "$REF" --repo "$GITHUB_REPOSITORY" --pattern '*.jar' --dir "$T/release"
+            JAR=$(find "$T/release" -name '*.jar' | head -n 1)
+          else
+            curl -fsSL -A "$USER_AGENT" "$REF" -o "$T/kingdoms.jar"
+            JAR="$T/kingdoms.jar"
+          fi
+          if [ -z "$JAR" ] || [ ! -s "$JAR" ]; then
+            echo "::error::No KingdomsX jar could be downloaded from $SOURCE $REF"
+            exit 1
+          fi
+
+          mvn -B -q install:install-file -Dfile="$JAR" \
+            -DgroupId=com.github.cryptomorin -DartifactId=kingdoms -Dversion="$VERSION" -Dpackaging=jar
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Built against KingdomsX **$VERSION** ($SOURCE: $REF)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build and test
+        run: mvn -B clean package -Dkingdoms.version="${{ steps.kingdoms.outputs.version }}"
+
+      - name: Upload the addon jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kingdoms-Addon-Jails-for-KingdomsX-${{ steps.kingdoms.outputs.version }}
+          path: target/Kingdoms-Addon-Jails-*.jar
+          if-no-files-found: error

@@ -1,0 +1,33 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # KingdomsX is not on a public repository beyond 1.17.18.1-BETA (Maven Central), so that is
+      # the version CI builds against. Set the KINGDOMS_VERSION repository variable to change it.
+      KINGDOMS_VERSION: ${{ vars.KINGDOMS_VERSION || '1.17.18.1-BETA' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build and test
+        run: mvn -B clean package -Dkingdoms.version="$KINGDOMS_VERSION"
+
+      - name: Upload the addon jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kingdoms-Addon-Jails
+          path: target/Kingdoms-Addon-Jails-*.jar
+          if-no-files-found: error

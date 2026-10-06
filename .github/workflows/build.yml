@@ -6,6 +6,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,46 +21,74 @@ jobs:
           java-version: '21'
           cache: maven
 
-      # KingdomsX stops at 1.17.18.1-BETA on Maven Central: the current releases are published on
-      # Modrinth. The latest one is downloaded and installed in the local Maven repository, so the
-      # addon is always compiled against what servers actually run. The KINGDOMS_VERSION repository
-      # variable pins an exact Modrinth version number instead of 'latest'.
-      - name: Fetch KingdomsX from Modrinth
+      # The current KingdomsX releases are on neither Maven Central (it stops at 1.17.18.1-BETA) nor
+      # always on Modrinth (it lags behind SpigotMC). The jar is looked up in two places:
+      #   - the releases of this repository tagged kingdomsx-<version>, with the jar as an asset;
+      #   - the versions published on Modrinth.
+      # The highest version number wins, a release of this repository on a tie. The
+      # KINGDOMS_VERSION repository variable pins an exact version instead of 'latest'.
+      - name: Fetch KingdomsX
         id: kingdoms
         env:
+          GH_TOKEN: ${{ github.token }}
           WANTED: ${{ vars.KINGDOMS_VERSION || 'latest' }}
           USER_AGENT: ${{ github.repository }} CI (https://github.com/${{ github.repository }})
         run: |
           set -euo pipefail
-          curl -fsSL -A "$USER_AGENT" https://api.modrinth.com/v2/project/kingdomsx/version -o "$RUNNER_TEMP/versions.json"
+          T="$RUNNER_TEMP"
 
-          # Highest version number first: the publication date is not reliable, a fix for an older
-          # version can be published after a newer one.
-          SORTED='map(select(.version_number | test("^[0-9]")))
-            | sort_by([(.version_number | capture("^(?<n>[0-9]+(\\.[0-9]+)*)").n | split(".") | map(tonumber)), .date_published])'
-          echo "Newest KingdomsX versions on Modrinth: $(jq -r "$SORTED | reverse | .[:10] | map(.version_number) | join(\", \")" "$RUNNER_TEMP/versions.json")" \
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,isDraft \
+            | jq '[.[] | select((.isDraft | not) and (.tagName | startswith("kingdomsx-")))
+                  | {version: (.tagName | ltrimstr("kingdomsx-")), source: "release", rank: 1, date: "", ref: .tagName}]' \
+            > "$T/releases.json"
+
+          if curl -fsSL -A "$USER_AGENT" https://api.modrinth.com/v2/project/kingdomsx/version -o "$T/modrinth-raw.json"; then
+            jq '[.[] | {version: .version_number, source: "modrinth", rank: 0, date: .date_published,
+                        ref: ((.files // []) | (map(select(.primary)) + .) | .[0].url // "")}
+                 | select(.ref != "")]' "$T/modrinth-raw.json" > "$T/modrinth.json"
+          else
+            echo "::warning::Modrinth could not be reached, only the releases of this repository are used"
+            echo '[]' > "$T/modrinth.json"
+          fi
+
+          # Highest version number first, then this repository's releases, then the newest upload.
+          jq -s 'add | map(select(.version | test("^[0-9]")))
+                 | sort_by([(.version | capture("^(?<n>[0-9]+(\\.[0-9]+)*)").n | split(".") | map(tonumber)), .rank, .date])' \
+            "$T/releases.json" "$T/modrinth.json" > "$T/candidates.json"
+          echo "Newest KingdomsX versions found: $(jq -r 'reverse | .[:10] | map("\(.version) (\(.source))") | join(", ")' "$T/candidates.json")" \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
           if [ "$WANTED" = latest ]; then
-            VERSION=$(jq -r "$SORTED | last | .version_number" "$RUNNER_TEMP/versions.json")
+            jq 'last' "$T/candidates.json" > "$T/chosen.json"
           else
-            VERSION="$WANTED"
+            jq --arg v "$WANTED" 'map(select(.version == $v)) | last' "$T/candidates.json" > "$T/chosen.json"
           fi
-
-          URL=$(jq -r --arg v "$VERSION" '[.[] | select(.version_number == $v)] | sort_by(.date_published) | last
-            | .files // [] | (map(select(.primary)) + .) | .[0].url // empty' "$RUNNER_TEMP/versions.json")
-          if [ -z "$URL" ]; then
-            echo "::error::KingdomsX $VERSION was not found on Modrinth"
+          VERSION=$(jq -r '.version // empty' "$T/chosen.json")
+          SOURCE=$(jq -r '.source // empty' "$T/chosen.json")
+          REF=$(jq -r '.ref // empty' "$T/chosen.json")
+          if [ -z "$VERSION" ]; then
+            echo "::error::KingdomsX $WANTED was found neither in the releases of this repository nor on Modrinth"
             exit 1
           fi
 
-          curl -fsSL -A "$USER_AGENT" "$URL" -o "$RUNNER_TEMP/kingdoms.jar"
-          mvn -B -q install:install-file -Dfile="$RUNNER_TEMP/kingdoms.jar" \
+          if [ "$SOURCE" = release ]; then
+            gh release download "$REF" --repo "$GITHUB_REPOSITORY" --pattern '*.jar' --dir "$T/release"
+            JAR=$(find "$T/release" -name '*.jar' | head -n 1)
+          else
+            curl -fsSL -A "$USER_AGENT" "$REF" -o "$T/kingdoms.jar"
+            JAR="$T/kingdoms.jar"
+          fi
+          if [ -z "$JAR" ] || [ ! -s "$JAR" ]; then
+            echo "::error::No KingdomsX jar could be downloaded from $SOURCE $REF"
+            exit 1
+          fi
+
+          mvn -B -q install:install-file -Dfile="$JAR" \
             -DgroupId=com.github.cryptomorin -DartifactId=kingdoms -Dversion="$VERSION" -Dpackaging=jar
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Built against KingdomsX **$VERSION** ($URL)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Built against KingdomsX **$VERSION** ($SOURCE: $REF)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build and test
         run: mvn -B clean package -Dkingdoms.version="${{ steps.kingdoms.outputs.version }}"
